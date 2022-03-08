@@ -8,6 +8,7 @@
 #include "ns3/flow-monitor-module.h"
 #include "ns3/dsr-routing-module.h"
 #include "ns3/traffic-control-module.h"
+#include "ns3/netanim-module.h"
 
 using namespace ns3;
 
@@ -38,22 +39,25 @@ int main (int argc, char *argv[])
   Ipv4GlobalRoutingHelper::PopulateRoutingTables();
   Packet::EnablePrinting (); 
 
-  //Create a dsrSink applications
-  uint16_t sinkPort = 8080;
-  Address sinkAddress (InetSocketAddress (ifaces.GetAddress (1), sinkPort));
-  DsrSinkHelper dsrSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
-  ApplicationContainer sinkApps = dsrSinkHelper.Install (nodes.Get (1));
-  sinkApps.Start (Seconds (0.));
-  sinkApps.Stop (Seconds (20.));
+  // create send application
+  uint16_t port = 8080;
+  DsrTcpAppHelper sourceHelper ("ns3::TcpSocketFactory",
+                               InetSocketAddress (ifaces.GetAddress (1), port));
+  sourceHelper.SetAttribute ("MaxBytes", UintegerValue (3000));
+  sourceHelper.SetAttribute ("Budget", UintegerValue (30));
+  ApplicationContainer sourceApp = sourceHelper.Install (nodes.Get (0));
+  sourceApp.Start (Seconds (1.0));
+  sourceApp.Stop (Seconds (10.0));
 
-  // create a sender application
-  Ptr<Socket> ns3TcpSocket = Socket::CreateSocket (nodes.Get (0), UdpSocketFactory::GetTypeId ());
-  uint32_t budget = 30;
-  Ptr<DsrApplication> app = CreateObject<DsrApplication> ();
-  app->Setup (ns3TcpSocket, sinkAddress, 200, 5, DataRate ("1Mbps"), budget, false);
-  nodes.Get (0)->AddApplication (app);
-  app->SetStartTime (Seconds (1.));
-  app->SetStopTime (Seconds (20.));
+  // create sink application
+  DsrSinkHelper sinkHelper ("ns3::TcpSocketFactory",
+                         InetSocketAddress (Ipv4Address::GetAny (), port));
+  ApplicationContainer sinkApp = sinkHelper.Install (nodes.Get (1));
+  sinkApp.Start (Seconds (0.0));
+  sinkApp.Stop (Seconds (10.0));
+
+
+  AnimationInterface anim("dsr-tcp-application-test.xml");
 
   Ptr<FlowMonitor> flowmon;
   FlowMonitorHelper flowmonHelper;

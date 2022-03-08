@@ -6,71 +6,71 @@
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/stats-module.h"
-#include "cost-tag.h"
+#include "budget-tag.h"
 
 namespace ns3 {
 
 //----------------------------------------------------------------------
-//-- CostTag
+//-- BudgetTag
 //------------------------------------------------------
 TypeId
-CostTag::GetTypeId (void)
+BudgetTag::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("CostTag")
+  static TypeId tid = TypeId ("BudgetTag")
     .SetParent<Tag> ()
-    .AddConstructor<CostTag> ()
-    .AddAttribute ("Cost",
-                   "The distance between root and dest!",
+    .AddConstructor<BudgetTag> ()
+    .AddAttribute ("Budget",
+                   "The budget time in millisecond",
                    EmptyAttributeValue (),
-                   MakeUintegerAccessor (&CostTag::GetCost),
+                   MakeUintegerAccessor (&BudgetTag::GetBudget),
                    MakeUintegerChecker <uint32_t> ())
   ;
   return tid;
 }
 
 TypeId
-CostTag::GetInstanceTypeId (void) const
+BudgetTag::GetInstanceTypeId (void) const
 {
   return GetTypeId ();
 }
 
 uint32_t
-CostTag::GetSerializedSize (void) const
+BudgetTag::GetSerializedSize (void) const
 {
   return 4;     // 4 bytes
 }
 
 void
-CostTag::Serialize (TagBuffer i) const
+BudgetTag::Serialize (TagBuffer i) const
 {
-  uint32_t t = m_cost;
+  uint32_t t = m_budget;
   i.Write ((const uint8_t *)&t, 4);
 }
 
 void
-CostTag::Deserialize (TagBuffer i)
+BudgetTag::Deserialize (TagBuffer i)
 {
   uint32_t t;
   i.Read ((uint8_t *)&t, 4);
-  m_cost = t;
+  m_budget = t;
 }
 
 void
-CostTag::SetCost (uint32_t cost)
+BudgetTag::SetBudget (uint32_t budget)
 {
-  m_cost = cost;
+  m_budget = budget;
 }
 
 uint32_t
-CostTag::GetCost (void) const
+BudgetTag::GetBudget (void) const
 {
-  return m_cost;
+  return m_budget;
 }
 
 void
-CostTag::Print (std::ostream &os) const
+BudgetTag::Print (std::ostream &os) const
 {
-  os << "t=" << m_cost;
+  os << "t=" << m_budget;
   // std::cout << "t=" << m_timestamp.GetMicroSeconds() << std::endl;
 }
 

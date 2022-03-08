@@ -39,18 +39,19 @@ int main (int argc, char *argv[])
   Packet::EnablePrinting (); 
 
   //Create a dsrSink applications
-  uint16_t sinkPort = 8080;
+  uint16_t sinkPort = 9;
   Address sinkAddress (InetSocketAddress (ifaces.GetAddress (1), sinkPort));
-  DsrSinkHelper dsrSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
+  DsrSinkHelper dsrSinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
   ApplicationContainer sinkApps = dsrSinkHelper.Install (nodes.Get (1));
   sinkApps.Start (Seconds (0.));
   sinkApps.Stop (Seconds (20.));
 
   // create a sender application
-  Ptr<Socket> ns3TcpSocket = Socket::CreateSocket (nodes.Get (0), UdpSocketFactory::GetTypeId ());
   uint32_t budget = 30;
-  Ptr<DsrApplication> app = CreateObject<DsrApplication> ();
-  app->Setup (ns3TcpSocket, sinkAddress, 200, 5, DataRate ("1Mbps"), budget, false);
+  uint32_t maxBytes = 100;
+  uint32_t sendSize = 100;
+  Ptr<DsrTcpApplication> app = CreateObject<DsrTcpApplication> ();
+  app->Setup (sinkAddress, sendSize, maxBytes, budget);
   nodes.Get (0)->AddApplication (app);
   app->SetStartTime (Seconds (1.));
   app->SetStopTime (Seconds (20.));

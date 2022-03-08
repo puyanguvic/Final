@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-#ifndef COSTTAG_H
-#define COSTTAG_H
+#ifndef PRIORITYTAG_H
+#define PRIORITYTAG_H
 
 #include "ns3/core-module.h"
 #include "ns3/tag.h"
@@ -8,7 +8,7 @@
 
 namespace ns3 {
 
-class CostTag : public Tag
+class PriorityTag : public Tag
  {
  public:
    static TypeId GetTypeId (void);
@@ -19,12 +19,12 @@ class CostTag : public Tag
    virtual void Print (std::ostream &os) const;
  
    // these are our accessors to our tag structure
-   void SetCost (uint32_t cost);
-   uint32_t GetCost (void) const;
+   void SetPriority (uint32_t priority);
+   uint32_t GetPriority (void) const;
  private:
-   uint32_t m_cost;  
+   uint32_t m_priority; // 0-fast, 1-slow, 2-best effort
  };
 
 }
 
-#endif /* COSTTAG_H */
+#endif /* PRIORITYTAG_H */

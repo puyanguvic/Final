@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-#ifndef DSR_APPLICATION_H
-#define DSR_APPLICATION_H
+#ifndef DSR_UDP_APPLICATION_H
+#define DSR_UDP_APPLICATION_H
 
 
 #include <iostream>
@@ -10,21 +10,20 @@
 #include "ns3/applications-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/flow-monitor-module.h"
-#include "dsr-application.h"
-
 
 namespace ns3 {
 
-class DsrApplication : public Application
+class DsrUdpApplication : public Application
 {
 
 public:
 
-  DsrApplication ();
-  virtual ~DsrApplication();
-
-  void Setup (Ptr<Socket> socket, Address address, uint32_t packetSize, uint32_t nPackets, DataRate dataRate, uint32_t budget, bool flag);
-  void Setup (Ptr<Socket> socket, Address address, uint32_t packetSize, uint32_t nPackets, DataRate dataRate, bool flag);
+  DsrUdpApplication ();
+  static TypeId GetTypeId (void);
+  virtual ~DsrUdpApplication();
+  // application with udp
+  void Setup (Ptr<Socket> socket, Address sinkAddress, uint32_t packetSize, uint32_t nPackets, DataRate dataRate, uint32_t budget, bool flag);
+  void Setup (Ptr<Socket> socket, Address sinkAddress, uint32_t packetSize, uint32_t nPackets, DataRate dataRate, bool flag);
   void ChangeRate (DataRate newDataRate);
   void recv (int numBytesRcvd);
 
