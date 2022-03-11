@@ -102,10 +102,10 @@ int main (int argc, char *argv[])
 
   AnimationInterface anim("dsrbp-tcp.xml");
 
-  Ipv4DSRRoutingHelper d;
-  Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>
-  (expName + ".routes", std::ios::out);
-  d.PrintRoutingTableAllAt (Seconds (0), routingStream);
+  // Ipv4DSRRoutingHelper d;
+  // Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>
+  // (expName + ".routes", std::ios::out);
+  // d.PrintRoutingTableAllAt (Seconds (0), routingStream);
 
   Simulator::Stop(Seconds(20));
   Simulator::Run();

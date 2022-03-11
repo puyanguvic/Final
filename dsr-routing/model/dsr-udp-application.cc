@@ -30,6 +30,11 @@ DsrUdpApplication::GetTypeId (void)
     .SetParent<Application> ()
     .SetGroupName("dsr-routing") 
     .AddConstructor<DsrUdpApplication> ()
+    .AddAttribute ("Variable_bitrate",
+                   "Enable the VBR",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&DsrUdpApplication::m_vbr),
+                   MakeBooleanChecker ())
   ;
   return tid;
 }

@@ -172,11 +172,8 @@ Ptr<Ipv4Route>
 Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<NetDevice> oif)
 {
   /**
-   * \author Pu Yang
-   * \todo to rewrite the lookup functions to find the best route from the routing table.
-   * the routing table in DSR routing is a SPF forest instead of a routing tree in global routing
+   * Get the shortest path in the routing table
   */
-
   NS_LOG_FUNCTION (this << dest << oif);
   NS_LOG_LOGIC ("Looking for route for destination " << dest);
   Ptr<Ipv4Route> rtentry = 0;
@@ -204,74 +201,69 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<NetDevice> oif)
           NS_LOG_LOGIC (allRoutes.size () << "Found dsr host route" << *i); 
         }
     }
-  if (allRoutes.size () == 0) // if no host route is found
-    {
-      NS_LOG_LOGIC ("Number of m_networkRoutes" << m_networkRoutes.size ());
-      for (NetworkRoutesI j = m_networkRoutes.begin (); 
-           j != m_networkRoutes.end (); 
-           j++) 
-        {
-          Ipv4Mask mask = (*j)->GetDestNetworkMask ();
-          Ipv4Address entry = (*j)->GetDestNetwork ();
-          if (mask.IsMatch (dest, entry)) 
-            {
-              if (oif != 0)
-                {
-                  if (oif != m_ipv4->GetNetDevice ((*j)->GetInterface ()))
-                    {
-                      NS_LOG_LOGIC ("Not on requested interface, skipping");
-                      continue;
-                    }
-                }
-              allRoutes.push_back (*j);
-              NS_LOG_LOGIC (allRoutes.size () << "Found DSR network route" << *j);
-            }
-        }
-    }
-  if (allRoutes.size () == 0)  // consider external if no host/network found
-    {
-      for (ASExternalRoutesI k = m_ASexternalRoutes.begin ();
-           k != m_ASexternalRoutes.end ();
-           k++)
-        {
-          Ipv4Mask mask = (*k)->GetDestNetworkMask ();
-          Ipv4Address entry = (*k)->GetDestNetwork ();
-          if (mask.IsMatch (dest, entry))
-            {
-              NS_LOG_LOGIC ("Found external route" << *k);
-              if (oif != 0)
-                {
-                  if (oif != m_ipv4->GetNetDevice ((*k)->GetInterface ()))
-                    {
-                      NS_LOG_LOGIC ("Not on requested interface, skipping");
-                      continue;
-                    }
-                }
-              allRoutes.push_back (*k);
-              break;
-            }
-        }
-    }
+  // if (allRoutes.size () == 0) // if no host route is found
+  //   {
+  //     NS_LOG_LOGIC ("Number of m_networkRoutes" << m_networkRoutes.size ());
+  //     for (NetworkRoutesI j = m_networkRoutes.begin (); 
+  //          j != m_networkRoutes.end (); 
+  //          j++) 
+  //       {
+  //         Ipv4Mask mask = (*j)->GetDestNetworkMask ();
+  //         Ipv4Address entry = (*j)->GetDestNetwork ();
+  //         if (mask.IsMatch (dest, entry)) 
+  //           {
+  //             if (oif != 0)
+  //               {
+  //                 if (oif != m_ipv4->GetNetDevice ((*j)->GetInterface ()))
+  //                   {
+  //                     NS_LOG_LOGIC ("Not on requested interface, skipping");
+  //                     continue;
+  //                   }
+  //               }
+  //             allRoutes.push_back (*j);
+  //             NS_LOG_LOGIC (allRoutes.size () << "Found DSR network route" << *j);
+  //           }
+  //       }
+  //   }
+  // if (allRoutes.size () == 0)  // consider external if no host/network found
+  //   {
+  //     for (ASExternalRoutesI k = m_ASexternalRoutes.begin ();
+  //          k != m_ASexternalRoutes.end ();
+  //          k++)
+  //       {
+  //         Ipv4Mask mask = (*k)->GetDestNetworkMask ();
+  //         Ipv4Address entry = (*k)->GetDestNetwork ();
+  //         if (mask.IsMatch (dest, entry))
+  //           {
+  //             NS_LOG_LOGIC ("Found external route" << *k);
+  //             if (oif != 0)
+  //               {
+  //                 if (oif != m_ipv4->GetNetDevice ((*k)->GetInterface ()))
+  //                   {
+  //                     NS_LOG_LOGIC ("Not on requested interface, skipping");
+  //                     continue;
+  //                   }
+  //               }
+  //             allRoutes.push_back (*k);
+  //             break;
+  //           }
+  //       }
+  //   }
   if (allRoutes.size () > 0 ) // if route(s) is found
     {
       /**
-       * \author Pu Yang
-       * \todo get all the possible route to the destination, and weight randomly
-       * select a possbile route  
        * \todo select the shortest path only
       */
-      // The best effort route
-      uint32_t flagNum = 0;
-      uint32_t flagCost = 0;
+      uint32_t routRef = 0;
+      uint32_t shortestDist = allRoutes.at(0)->GetDistance ();
       for (uint32_t i = 0; i < allRoutes.size (); i ++)
       {
-        flagCost = allRoutes.at (flagNum)->GetDistance ();
-        if (allRoutes.at (i)->GetDistance () <  flagCost)
+        if (allRoutes.at (i)->GetDistance () <  shortestDist)
         {
-          flagNum = i;
+          routRef = i;
         }
       }
-      Ipv4DSRRoutingTableEntry* route = allRoutes.at (flagNum);
+      Ipv4DSRRoutingTableEntry* route = allRoutes.at (routRef);
 
       // create a Ipv4Route object from the selected routing table entry
       rtentry = Create<Ipv4Route> ();
@@ -281,12 +273,6 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<NetDevice> oif)
       rtentry->SetGateway (route->GetGateway ());
       uint32_t interfaceIdx = route->GetInterface ();
       rtentry->SetOutputDevice (m_ipv4->GetNetDevice (interfaceIdx));
-      /**
-       * \author Pu Yang
-       * \brief set the distance
-      */
-      // uint32_t distance = route->GetDistance();
-      // rtentry->SetDistance (distance);
       return rtentry;
     }
   else 
@@ -299,11 +285,8 @@ Ptr<Ipv4Route>
 Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> oif)
 {
   /**
-   * \author Pu Yang
-   * \todo to rewrite the lookup functions to find the best route from the routing table.
-   * the routing table in DSR routing is a SPF forest instead of a routing tree in global routing
+   * Lookup a Route to forward the DSR packets.
   */
-
   NS_LOG_FUNCTION (this << dest << oif);
   NS_LOG_LOGIC ("Looking for route for destination " << dest);
   Ptr<Ipv4Route> rtentry = 0;
@@ -331,76 +314,68 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
           NS_LOG_LOGIC (allRoutes.size () << "Found dsr host route" << *i << " with Cost: " << (*i)->GetDistance ()); 
         }
     }
-  if (allRoutes.size () == 0) // if no host route is found
-    {
-      NS_LOG_LOGIC ("Number of m_networkRoutes" << m_networkRoutes.size ());
-      for (NetworkRoutesI j = m_networkRoutes.begin (); 
-           j != m_networkRoutes.end (); 
-           j++) 
-        {
-          Ipv4Mask mask = (*j)->GetDestNetworkMask ();
-          Ipv4Address entry = (*j)->GetDestNetwork ();
-          if (mask.IsMatch (dest, entry)) 
-            {
-              if (oif != 0)
-                {
-                  if (oif != m_ipv4->GetNetDevice ((*j)->GetInterface ()))
-                    {
-                      NS_LOG_LOGIC ("Not on requested interface, skipping");
-                      continue;
-                    }
-                }
-              allRoutes.push_back (*j);
-              NS_LOG_LOGIC (allRoutes.size () << "Found DSR network route" << *j);
-            }
-        }
-    }
-  if (allRoutes.size () == 0)  // consider external if no host/network found
-    {
-      for (ASExternalRoutesI k = m_ASexternalRoutes.begin ();
-           k != m_ASexternalRoutes.end ();
-           k++)
-        {
-          Ipv4Mask mask = (*k)->GetDestNetworkMask ();
-          Ipv4Address entry = (*k)->GetDestNetwork ();
-          if (mask.IsMatch (dest, entry))
-            {
-              NS_LOG_LOGIC ("Found external route" << *k);
-              if (oif != 0)
-                {
-                  if (oif != m_ipv4->GetNetDevice ((*k)->GetInterface ()))
-                    {
-                      NS_LOG_LOGIC ("Not on requested interface, skipping");
-                      continue;
-                    }
-                }
-              allRoutes.push_back (*k);
-              break;
-            }
-        }
-    }
+  // if (allRoutes.size () == 0) // if no host route is found
+  //   {
+  //     NS_LOG_LOGIC ("Number of m_networkRoutes" << m_networkRoutes.size ());
+  //     for (NetworkRoutesI j = m_networkRoutes.begin (); 
+  //          j != m_networkRoutes.end (); 
+  //          j++) 
+  //       {
+  //         Ipv4Mask mask = (*j)->GetDestNetworkMask ();
+  //         Ipv4Address entry = (*j)->GetDestNetwork ();
+  //         if (mask.IsMatch (dest, entry)) 
+  //           {
+  //             if (oif != 0)
+  //               {
+  //                 if (oif != m_ipv4->GetNetDevice ((*j)->GetInterface ()))
+  //                   {
+  //                     NS_LOG_LOGIC ("Not on requested interface, skipping");
+  //                     continue;
+  //                   }
+  //               }
+  //             allRoutes.push_back (*j);
+  //             NS_LOG_LOGIC (allRoutes.size () << "Found DSR network route" << *j);
+  //           }
+  //       }
+  //   }
+  // if (allRoutes.size () == 0)  // consider external if no host/network found
+  //   {
+  //     for (ASExternalRoutesI k = m_ASexternalRoutes.begin ();
+  //          k != m_ASexternalRoutes.end ();
+  //          k++)
+  //       {
+  //         Ipv4Mask mask = (*k)->GetDestNetworkMask ();
+  //         Ipv4Address entry = (*k)->GetDestNetwork ();
+  //         if (mask.IsMatch (dest, entry))
+  //           {
+  //             NS_LOG_LOGIC ("Found external route" << *k);
+  //             if (oif != 0)
+  //               {
+  //                 if (oif != m_ipv4->GetNetDevice ((*k)->GetInterface ()))
+  //                   {
+  //                     NS_LOG_LOGIC ("Not on requested interface, skipping");
+  //                     continue;
+  //                   }
+  //               }
+  //             allRoutes.push_back (*k);
+  //             break;
+  //           }
+  //       }
+  //   }
   if (allRoutes.size () > 0 ) // if route(s) is found
     {
-      /**
-       * \author Pu Yang
-       * \todo get all the possible route to the destination, and weight randomly
-       * select a possbile route  
-      */
       FlagTag flagTag;
       p->PeekPacketTag (flagTag);
       BudgetTag budgetTag;
       p->PeekPacketTag (budgetTag);
       TimestampTag timestampTag;
       p->PeekPacketTag (timestampTag);
-
       if (budgetTag.GetBudget () + timestampTag.GetMicroSeconds () < Simulator::Now().GetMicroSeconds ())
       {
         NS_LOG_INFO ("TIMEOUT DROP !!!");
         return 0;
       }
-
       uint32_t budget = budgetTag.GetBudget () + timestampTag.GetMicroSeconds () - Simulator::Now().GetMicroSeconds (); // in Microseconds
-
       // std::cout << "budget = " << budgetTag.GetBudget () << "\n";
       // std::cout << "Old Allroute size = "<< allRoutes.size () << std::endl;
       RouteVec_t fineRoutes;
@@ -887,10 +862,12 @@ Ipv4DSRRouting::RouteOutput (Ptr<Packet> p, const Ipv4Header &header, Ptr<NetDev
   Ptr<Ipv4Route> rtentry;
   if (p != nullptr && p->GetSize () != 0)
     { 
-      TimestampTag txTimeTag;
-      bool getTx = p->PeekPacketTag (txTimeTag);
-      std::cout << getTx << "txtime : " << txTimeTag.GetTimestamp ().GetNanoSeconds () << std::endl;
-      rtentry = LookupDSRRoute (header.GetDestination (), p, oif);
+      std::cout << "packet size: " << p->GetSerializedSize () << std::endl; 
+      // TimestampTag txTimeTag;
+      // bool getTx = p->PeekPacketTag (txTimeTag);
+      // std::cout << getTx << " txtime : " << txTimeTag.GetTimestamp ().GetNanoSeconds () << std::endl;
+      // rtentry = LookupDSRRoute (header.GetDestination (), p, oif);
+      rtentry = LookupDSRRoute (header.GetDestination (), oif);
     }
   else
   {

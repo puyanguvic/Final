@@ -45,6 +45,7 @@ private:
   uint32_t m_packetSent;
   uint32_t m_budget;
   bool m_flag;
+  bool m_vbr;
 };
 }
 
