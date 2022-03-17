@@ -36,6 +36,8 @@
 #include "flag-tag.h"
 #include "timestamp-tag.h"
 #include "priority-tag.h"
+#include "dist-tag.h"
+#include "ns3/point-to-point-module.h"
 
 namespace ns3 {
 
@@ -201,59 +203,8 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<NetDevice> oif)
           NS_LOG_LOGIC (allRoutes.size () << "Found dsr host route" << *i); 
         }
     }
-  // if (allRoutes.size () == 0) // if no host route is found
-  //   {
-  //     NS_LOG_LOGIC ("Number of m_networkRoutes" << m_networkRoutes.size ());
-  //     for (NetworkRoutesI j = m_networkRoutes.begin (); 
-  //          j != m_networkRoutes.end (); 
-  //          j++) 
-  //       {
-  //         Ipv4Mask mask = (*j)->GetDestNetworkMask ();
-  //         Ipv4Address entry = (*j)->GetDestNetwork ();
-  //         if (mask.IsMatch (dest, entry)) 
-  //           {
-  //             if (oif != 0)
-  //               {
-  //                 if (oif != m_ipv4->GetNetDevice ((*j)->GetInterface ()))
-  //                   {
-  //                     NS_LOG_LOGIC ("Not on requested interface, skipping");
-  //                     continue;
-  //                   }
-  //               }
-  //             allRoutes.push_back (*j);
-  //             NS_LOG_LOGIC (allRoutes.size () << "Found DSR network route" << *j);
-  //           }
-  //       }
-  //   }
-  // if (allRoutes.size () == 0)  // consider external if no host/network found
-  //   {
-  //     for (ASExternalRoutesI k = m_ASexternalRoutes.begin ();
-  //          k != m_ASexternalRoutes.end ();
-  //          k++)
-  //       {
-  //         Ipv4Mask mask = (*k)->GetDestNetworkMask ();
-  //         Ipv4Address entry = (*k)->GetDestNetwork ();
-  //         if (mask.IsMatch (dest, entry))
-  //           {
-  //             NS_LOG_LOGIC ("Found external route" << *k);
-  //             if (oif != 0)
-  //               {
-  //                 if (oif != m_ipv4->GetNetDevice ((*k)->GetInterface ()))
-  //                   {
-  //                     NS_LOG_LOGIC ("Not on requested interface, skipping");
-  //                     continue;
-  //                   }
-  //               }
-  //             allRoutes.push_back (*k);
-  //             break;
-  //           }
-  //       }
-  //   }
   if (allRoutes.size () > 0 ) // if route(s) is found
     {
-      /**
-       * \todo select the shortest path only
-      */
       uint32_t routRef = 0;
       uint32_t shortestDist = allRoutes.at(0)->GetDistance ();
       for (uint32_t i = 0; i < allRoutes.size (); i ++)
@@ -314,298 +265,321 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
           NS_LOG_LOGIC (allRoutes.size () << "Found dsr host route" << *i << " with Cost: " << (*i)->GetDistance ()); 
         }
     }
-  // if (allRoutes.size () == 0) // if no host route is found
-  //   {
-  //     NS_LOG_LOGIC ("Number of m_networkRoutes" << m_networkRoutes.size ());
-  //     for (NetworkRoutesI j = m_networkRoutes.begin (); 
-  //          j != m_networkRoutes.end (); 
-  //          j++) 
-  //       {
-  //         Ipv4Mask mask = (*j)->GetDestNetworkMask ();
-  //         Ipv4Address entry = (*j)->GetDestNetwork ();
-  //         if (mask.IsMatch (dest, entry)) 
-  //           {
-  //             if (oif != 0)
-  //               {
-  //                 if (oif != m_ipv4->GetNetDevice ((*j)->GetInterface ()))
-  //                   {
-  //                     NS_LOG_LOGIC ("Not on requested interface, skipping");
-  //                     continue;
-  //                   }
-  //               }
-  //             allRoutes.push_back (*j);
-  //             NS_LOG_LOGIC (allRoutes.size () << "Found DSR network route" << *j);
-  //           }
-  //       }
-  //   }
-  // if (allRoutes.size () == 0)  // consider external if no host/network found
-  //   {
-  //     for (ASExternalRoutesI k = m_ASexternalRoutes.begin ();
-  //          k != m_ASexternalRoutes.end ();
-  //          k++)
-  //       {
-  //         Ipv4Mask mask = (*k)->GetDestNetworkMask ();
-  //         Ipv4Address entry = (*k)->GetDestNetwork ();
-  //         if (mask.IsMatch (dest, entry))
-  //           {
-  //             NS_LOG_LOGIC ("Found external route" << *k);
-  //             if (oif != 0)
-  //               {
-  //                 if (oif != m_ipv4->GetNetDevice ((*k)->GetInterface ()))
-  //                   {
-  //                     NS_LOG_LOGIC ("Not on requested interface, skipping");
-  //                     continue;
-  //                   }
-  //               }
-  //             allRoutes.push_back (*k);
-  //             break;
-  //           }
-  //       }
-  //   }
+  
   if (allRoutes.size () > 0 ) // if route(s) is found
     {
       FlagTag flagTag;
-      p->PeekPacketTag (flagTag);
       BudgetTag budgetTag;
-      p->PeekPacketTag (budgetTag);
       TimestampTag timestampTag;
-      p->PeekPacketTag (timestampTag);
+      if (!(p->PeekPacketTag (flagTag) 
+            && p->PeekPacketTag (budgetTag) 
+            && p->PeekPacketTag (timestampTag)))
+      {
+        NS_LOG_INFO ("No Tags in the packet");
+        return 0;
+      }
+      // Time out drop
       if (budgetTag.GetBudget () + timestampTag.GetMicroSeconds () < Simulator::Now().GetMicroSeconds ())
       {
         NS_LOG_INFO ("TIMEOUT DROP !!!");
         return 0;
       }
+
       uint32_t budget = budgetTag.GetBudget () + timestampTag.GetMicroSeconds () - Simulator::Now().GetMicroSeconds (); // in Microseconds
-      // std::cout << "budget = " << budgetTag.GetBudget () << "\n";
-      // std::cout << "Old Allroute size = "<< allRoutes.size () << std::endl;
-      RouteVec_t fineRoutes;
-      RouteVec_t goodRoutes;
-      double cost = 0;
-      double avgCost = 0;
-      uint32_t numFineRoute = 0;
-
-      NS_LOG_INFO (" ALLROUTE SIZE: "<< allRoutes.size());
-      for (uint32_t i = 0; i < allRoutes.size (); i ++)
-        {
-          // std::cout << "All Distance: " << allRoutes.at(i)->GetDistance () << std::endl;
-          // use FINEROUTE to filter out route beyond packet cost
-          if (allRoutes.at(i)->GetDistance () < budget) // push route i to fineRoute if the current budget > route i's cost
-            {
-              fineRoutes.push_back(allRoutes.at (i));  // BUG: Route not properly erased
-              NS_LOG_LOGIC ("FINEROUTE CURRENT NODE GATEWAY " << allRoutes.at (i)->GetGateway());
-              cost += allRoutes.at(i)->GetDistance ();
-              numFineRoute ++;
-            }
-          else
-            {
-              NS_LOG_INFO (" DROP ROUTE: " << allRoutes.at(i)->GetGateway () << " COST: "<< allRoutes.at(i)->GetDistance () );
-              if (flagTag.GetFlagTag () == true)
-              {
-                uint32_t q_fast = m_ipv4->GetNetDevice (allRoutes.at(i)->GetInterface ())->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(allRoutes.at (i)->GetInterface()))->GetInternalQueue (0)->GetCurrentSize ().GetValue ();
-                uint32_t q_slow = m_ipv4->GetNetDevice (allRoutes.at(i)->GetInterface ())->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(allRoutes.at (i)->GetInterface()))->GetInternalQueue (1)->GetCurrentSize ().GetValue ();
-                std::cout << "q_fast: "<< q_fast << " q_slow: " << q_slow << std::endl;
-                std::cout << "Budget: "<< budget << " DROP ROUTE: "<< i << std::endl;
-              }
-            }
-        }
-      NS_LOG_INFO (" FINEROUTE SIZE: "<< fineRoutes.size());
-      
-      if (numFineRoute == 0)
-        {
-          NS_LOG_ERROR ("NO ROUTE !!! " );
-          if (flagTag.GetFlagTag () == true)
-            {
-              std::cout << "Budget: "<< budget<< " DROP PACKET: NO ROUTE" << std::endl;
-            }
-          return 0;
-        }
-      
-      avgCost = cost / numFineRoute + 1500;
-
-      // use GOODROUTE to filter avoid loop when budget is sufficient
-      for (uint32_t i = 0; i < fineRoutes.size (); i ++)
+      DistTag distTag;
+      RouteVec_t cRouts;
+      if (p->PeekPacketTag (distTag))
       {
-        double flag = fineRoutes.at(i)->GetDistance () * 1.0 ; // In MicroSeconds
-        // std::cout<< "avgCost: " << avgCost << "   " << "route Cost: " << flag << std::endl;
-        if (flag <= avgCost)                
+        uint32_t dist = distTag.GetDistance ();
+        std::cout << dist << std::endl;
+        budget = (budget < dist)? budget : dist;
+      }
+      for (uint32_t i = 0; i < allRoutes.size (); i ++)
+      {
+        if (allRoutes.at (i)->GetDistance () < budget)
         {
-          goodRoutes.push_back(fineRoutes.at (i));  // BUG: Route not properly erased
-          NS_LOG_LOGIC ("GOODROUTE CURRENT NODE GATEWAY " << allRoutes.at (i)->GetGateway());
-        }
-        else
-        {
-          NS_LOG_INFO (" DROP ROUTE: " << fineRoutes.at(i)->GetGateway () << " COST: "<< fineRoutes.at(i)->GetDistance () );
+          // check queue status in current node
+          // Get the netdevice
+          Ptr <NetDevice> dev = m_ipv4->GetNetDevice (allRoutes.at (i)->GetInterface ());
+          //get the queue disc on the device
+          Ptr<QueueDisc> disc = m_ipv4->GetNetDevice (0)->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (dev);
+          
+          Ptr<Channel> channel = dev->GetChannel ();
+          PointToPointChannel *p2pchannel = dynamic_cast <PointToPointChannel *> (PeekPointer (channel));
+          if (p2pchannel != 0)
+          {
+            Ptr<PointToPointNetDevice> d_Dev = p2pchannel->GetDestination (1);
+            Ptr<Node> d_node = d_Dev->GetNode ();
+            // find the out put route
+            Ptr<Ipv4> d_ipv4 = d_node->GetObject<Ipv4> ();
+            if (d_ipv4 != 0 && d_ipv4->GetRoutingProtocol () != 0)
+            {
+              // we only use the destination address info here
+              Ipv4Header header;
+              // saddr is the current device address
+              // header.SetSource (saddr);
+              // daddr is the destination device address
+              header.SetDestination (dest);
+              // Prot_number is 6 tcp protocol
+              // header.SetProtocol (PROT_NUMBER);
+              Socket::SocketErrno errno_;
+              Ptr<Ipv4Route> route;
+              if (d_ipv4->GetRoutingProtocol () != 0)
+              {
+                route = d_ipv4->GetRoutingProtocol ()->RouteOutput (p, header, oif, errno_);
+                uint32_t interfaceIdx = route->GetInterface ();
+                Ptr<NetDevice> o_dev = d_ipv4->GetNetDevice (interfaceIdx));
+              }
+              Ptr<Ipv4Route> route = d_ipv4->GetRoutingProtocol ()->RouteOutput (p, header, oif, errno_);
+            }
+
+          }
+          
+          cRouts.push_back (allRoutes.at (i));
         }
       }
+
+      if (cRouts.size () > 0)
+      {
+
+      }
+      else
+      {
+        NS_LOG_INFO ("No Route available");
+      }
+
+      // // calculate the queuing delay
+      // uint32_t internalNqueue = m_ipv4->GetNetDevice (0)->GetNode ()->GetObject<TrafficControlLayer> ()-> GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(goodRoutes.at (0)->GetInterface()))->GetNInternalQueues();
+      
+
+      // RouteVec_t fineRoutes;
+      // RouteVec_t goodRoutes;
+      // double cost = 0;
+      // double avgCost = 0;
+      // uint32_t numFineRoute = 0;
+
+      // NS_LOG_INFO (" ALLROUTE SIZE: "<< allRoutes.size());
+      // for (uint32_t i = 0; i < allRoutes.size (); i ++)
+      //   {
+      //     // std::cout << "All Distance: " << allRoutes.at(i)->GetDistance () << std::endl;
+      //     // use FINEROUTE to filter out route beyond packet cost
+      //     if (allRoutes.at(i)->GetDistance () < budget) // push route i to fineRoute if the current budget > route i's cost
+      //       {
+      //         fineRoutes.push_back(allRoutes.at (i));  // BUG: Route not properly erased
+      //         NS_LOG_LOGIC ("FINEROUTE CURRENT NODE GATEWAY " << allRoutes.at (i)->GetGateway());
+      //         cost += allRoutes.at(i)->GetDistance ();
+      //         numFineRoute ++;
+      //       }
+      //     else
+      //       {
+      //         NS_LOG_INFO (" DROP ROUTE: " << allRoutes.at(i)->GetGateway () << " COST: "<< allRoutes.at(i)->GetDistance () );
+      //         if (flagTag.GetFlagTag () == true)
+      //         {
+      //           uint32_t q_fast = m_ipv4->GetNetDevice (allRoutes.at(i)->GetInterface ())->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(allRoutes.at (i)->GetInterface()))->GetInternalQueue (0)->GetCurrentSize ().GetValue ();
+      //           uint32_t q_slow = m_ipv4->GetNetDevice (allRoutes.at(i)->GetInterface ())->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(allRoutes.at (i)->GetInterface()))->GetInternalQueue (1)->GetCurrentSize ().GetValue ();
+      //           std::cout << "q_fast: "<< q_fast << " q_slow: " << q_slow << std::endl;
+      //           std::cout << "Budget: "<< budget << " DROP ROUTE: "<< i << std::endl;
+      //         }
+      //       }
+      //   }
+      // NS_LOG_INFO (" FINEROUTE SIZE: "<< fineRoutes.size());
+      
+      // if (numFineRoute == 0)
+      //   {
+      //     NS_LOG_ERROR ("NO ROUTE !!! " );
+      //     if (flagTag.GetFlagTag () == true)
+      //       {
+      //         std::cout << "Budget: "<< budget<< " DROP PACKET: NO ROUTE" << std::endl;
+      //       }
+      //     return 0;
+      //   }
+      
+      // avgCost = cost / numFineRoute + 1500;
+
+      // // use GOODROUTE to filter avoid loop when budget is sufficient
+      // for (uint32_t i = 0; i < fineRoutes.size (); i ++)
+      // {
+      //   double flag = fineRoutes.at(i)->GetDistance () * 1.0 ; // In MicroSeconds
+      //   // std::cout<< "avgCost: " << avgCost << "   " << "route Cost: " << flag << std::endl;
+      //   if (flag <= avgCost)                
+      //   {
+      //     goodRoutes.push_back(fineRoutes.at (i));  // BUG: Route not properly erased
+      //     NS_LOG_LOGIC ("GOODROUTE CURRENT NODE GATEWAY " << allRoutes.at (i)->GetGateway());
+      //   }
+      //   else
+      //   {
+      //     NS_LOG_INFO (" DROP ROUTE: " << fineRoutes.at(i)->GetGateway () << " COST: "<< fineRoutes.at(i)->GetDistance () );
+      //   }
+      // }
         
   
 
-      // std::cout << "Now goodRoute size = "<< goodRoutes.size () << std::endl;
-      // for (uint32_t i = 0; i < goodRoutes.size (); i++)
+      // // std::cout << "Now goodRoute size = "<< goodRoutes.size () << std::endl;
+      // // for (uint32_t i = 0; i < goodRoutes.size (); i++)
+      // //   {
+      // //     std::cout << "Current Distance: " << goodRoutes.at(i)->GetDistance () << std::endl;
+      // //   }
+      
+      // // std::sort (allRoutes.begin (), allRoutes.end (), CompareRouteCost);
+
+
+      // uint32_t internalNqueue = m_ipv4->GetNetDevice (0)->GetNode ()->GetObject<TrafficControlLayer> ()-> GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(goodRoutes.at (0)->GetInterface()))->GetNInternalQueues();
+      // uint32_t bf_fast = 12;
+      // uint32_t bf_slow = 36;
+
+      // double weight[goodRoutes.size ()* (internalNqueue - 1)];  // Exclude best-effort lane
+      // double tempSum = 0;
+      // for (uint32_t i = 0; i < goodRoutes.size (); i ++)
+      // {
+      //   double dn = 0.0;
+      //   // weight[i] = 1.0 / (m_ipv4->GetNetDevice (allRoutes.at(i)->GetInterface ())->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(allRoutes.at (i)->GetInterface()))->GetCurrentSize ().GetValue () + 0.01);
+      //   if (budget < goodRoutes.at (i)->GetDistance())
       //   {
-      //     std::cout << "Current Distance: " << goodRoutes.at(i)->GetDistance () << std::endl;
+      //     dn = 0.0 ;
       //   }
-      
-      // std::sort (allRoutes.begin (), allRoutes.end (), CompareRouteCost);
+      //   else
+      //   {
+      //     dn = (budget - goodRoutes.at (i)->GetDistance()) * 1.0; // dn: per-hop budget in Microseconds
+      //     dn = dn/1000; // in Milliseconds
+      //   }
+      //   // ql_fast: fast lane queue length;  ql_slow: slow lane queue length; bf: buffer size
+      //   uint32_t ql_fast = m_ipv4->GetNetDevice (goodRoutes.at(i)->GetInterface ())->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(goodRoutes.at (i)->GetInterface()))->GetInternalQueue (0)->GetCurrentSize ().GetValue ();
+      //   uint32_t ql_slow = m_ipv4->GetNetDevice (goodRoutes.at(i)->GetInterface ())->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(goodRoutes.at (i)->GetInterface()))->GetInternalQueue (1)->GetCurrentSize ().GetValue ();
+      //   uint32_t packet_size = p->GetSize ();
+      //   uint32_t linkrate;
+      //   Ptr<NetDevice> device = m_ipv4->GetNetDevice (goodRoutes.at (i)->GetInterface ());
+      //   DataRateValue dataRate;
+      //   device->GetAttribute ("DataRate", dataRate);
+      //   linkrate = dataRate.Get().GetBitRate ();
+      //   double bound_fast = ((bf_fast)*packet_size*8 / (0.5*linkrate))*1000; 
+      //   double bound_slow = ((bf_slow)*packet_size*8 / (0.3*linkrate))*1000; // in Milliseconds
 
-
-      uint32_t internalNqueue = m_ipv4->GetNetDevice (0)->GetNode ()->GetObject<TrafficControlLayer> ()-> GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(goodRoutes.at (0)->GetInterface()))->GetNInternalQueues();
-      uint32_t bf_fast = 12;
-      uint32_t bf_slow = 36;
-
-      double weight[goodRoutes.size ()* (internalNqueue - 1)];  // Exclude best-effort lane
-      double tempSum = 0;
-      for (uint32_t i = 0; i < goodRoutes.size (); i ++)
-      {
-        double dn = 0.0;
-        // weight[i] = 1.0 / (m_ipv4->GetNetDevice (allRoutes.at(i)->GetInterface ())->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(allRoutes.at (i)->GetInterface()))->GetCurrentSize ().GetValue () + 0.01);
-        if (budget < goodRoutes.at (i)->GetDistance())
-        {
-          dn = 0.0 ;
-        }
-        else
-        {
-          dn = (budget - goodRoutes.at (i)->GetDistance()) * 1.0; // dn: per-hop budget in Microseconds
-          dn = dn/1000; // in Milliseconds
-        }
-        // ql_fast: fast lane queue length;  ql_slow: slow lane queue length; bf: buffer size
-        uint32_t ql_fast = m_ipv4->GetNetDevice (goodRoutes.at(i)->GetInterface ())->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(goodRoutes.at (i)->GetInterface()))->GetInternalQueue (0)->GetCurrentSize ().GetValue ();
-        uint32_t ql_slow = m_ipv4->GetNetDevice (goodRoutes.at(i)->GetInterface ())->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (m_ipv4->GetNetDevice(goodRoutes.at (i)->GetInterface()))->GetInternalQueue (1)->GetCurrentSize ().GetValue ();
-        uint32_t packet_size = p->GetSize ();
-        uint32_t linkrate;
-        Ptr<NetDevice> device = m_ipv4->GetNetDevice (goodRoutes.at (i)->GetInterface ());
-        DataRateValue dataRate;
-        device->GetAttribute ("DataRate", dataRate);
-        linkrate = dataRate.Get().GetBitRate ();
-        double bound_fast = ((bf_fast)*packet_size*8 / (0.5*linkrate))*1000; 
-        double bound_slow = ((bf_slow)*packet_size*8 / (0.3*linkrate))*1000; // in Milliseconds
-
-        if (ql_fast == bf_fast && ql_slow == bf_slow)
-        {
-          NS_LOG_ERROR ("All next-hops are congested!! Drop packet");
-          if (flagTag.GetFlagTag () == true)
-          {
-            std::cout << "DROP PACKETS: TIME OUT DUE TO CONGESTION" << std::endl;
-          }
-          return 0;
-        }
+      //   if (ql_fast == bf_fast && ql_slow == bf_slow)
+      //   {
+      //     NS_LOG_ERROR ("All next-hops are congested!! Drop packet");
+      //     if (flagTag.GetFlagTag () == true)
+      //     {
+      //       std::cout << "DROP PACKETS: TIME OUT DUE TO CONGESTION" << std::endl;
+      //     }
+      //     return 0;
+      //   }
         
-        double edq_fast = ((ql_fast+1)*packet_size*8 / (0.5*linkrate))*1000;  // in Milliseconds
-        double edq_slow = ((ql_slow+1)*packet_size*8 / (0.3*linkrate))*1000;
-        double dnn = std::max(dn, 0.0); // in Milliseconds
-        double delayFlag;
+      //   double edq_fast = ((ql_fast+1)*packet_size*8 / (0.5*linkrate))*1000;  // in Milliseconds
+      //   double edq_slow = ((ql_slow+1)*packet_size*8 / (0.3*linkrate))*1000;
+      //   double dnn = std::max(dn, 0.0); // in Milliseconds
+      //   double delayFlag;
 
-        if (dnn >= bound_slow)
-        {
-          delayFlag = bound_slow;
-        }
-        if (dnn >= bound_fast && dnn < bound_slow)
-        {
-          delayFlag = dnn;
-        }
-        if (dnn < bound_fast)
-        {
-          delayFlag = bound_fast;
-        }
-        weight[2*i] = std::max(delayFlag - edq_fast, 0.0 ) * 0.1;
-        weight[2*i+1] = std::max(delayFlag - edq_slow, 0.0 ) * 0.1;
+      //   if (dnn >= bound_slow)
+      //   {
+      //     delayFlag = bound_slow;
+      //   }
+      //   if (dnn >= bound_fast && dnn < bound_slow)
+      //   {
+      //     delayFlag = dnn;
+      //   }
+      //   if (dnn < bound_fast)
+      //   {
+      //     delayFlag = bound_fast;
+      //   }
+      //   weight[2*i] = std::max(delayFlag - edq_fast, 0.0 ) * 0.1;
+      //   weight[2*i+1] = std::max(delayFlag - edq_slow, 0.0 ) * 0.1;
 
-        if (ql_fast > bf_fast - 5)
-        {
-          weight[2*i] = bound_fast - edq_fast;
-        }
-        if (ql_slow > bf_slow - 5)
-        {
-          weight[2*i+1] = bound_slow - edq_slow;
-        }
+      //   if (ql_fast > bf_fast - 5)
+      //   {
+      //     weight[2*i] = bound_fast - edq_fast;
+      //   }
+      //   if (ql_slow > bf_slow - 5)
+      //   {
+      //     weight[2*i+1] = bound_slow - edq_slow;
+      //   }
 
         
-        tempSum += (weight[2*i] + weight[2*i+1]);
+      //   tempSum += (weight[2*i] + weight[2*i+1]);
 
-        // weight[i] = max((dn - E[dq]), 0) 
-        // dn = per-hop budget,  E[dq] = estimated next-hop delay
-        //  per-hop_budget = current_budget - next-hop cost, current_budget = delay_budget - (timestamp.now()-timestamp.begin())
-        //  estimated next-hop delay = Qh/(w*C),  Qh = next-hop queue length, w = fast/slow lane weight, C = link rate
-        // 
-        // total_weight = sum(weight)
-        // weight[i] = weight[i]/total_weight
+      //   // weight[i] = max((dn - E[dq]), 0) 
+      //   // dn = per-hop budget,  E[dq] = estimated next-hop delay
+      //   //  per-hop_budget = current_budget - next-hop cost, current_budget = delay_budget - (timestamp.now()-timestamp.begin())
+      //   //  estimated next-hop delay = Qh/(w*C),  Qh = next-hop queue length, w = fast/slow lane weight, C = link rate
+      //   // 
+      //   // total_weight = sum(weight)
+      //   // weight[i] = weight[i]/total_weight
 
-        if (flagTag.GetFlagTag () == true)
-          {
-            std::cout << "=======================================" << std::endl;
-            std::cout << "GoodRoute "<< i << " dn = " << delayFlag << std::endl; // Check the change of queue length
-            std::cout << "GoodRoute "<< i << " fql = " << ql_fast << ", sql = " << ql_slow << std::endl; // Check the change of queue length
-            std::cout << "GoodRoute "<< i << " edq_fast = " << edq_fast << ", edq_slow = " << edq_slow << std::endl; // Check the change of estimated delay
-            std::cout << "GoodRoute "<< i << " bound_fast = " << bound_fast << ", bound_slow = " << bound_slow << std::endl; // Check the change of estimated delay
-            std::cout << "GoodRoute "<< i << " Fast lane weight: " << weight[2*i] << " Slow lane: " << weight[2*i+1] << std::endl; // Check the change of weight
-          }
-      }
+      //   if (flagTag.GetFlagTag () == true)
+      //     {
+      //       std::cout << "=======================================" << std::endl;
+      //       std::cout << "GoodRoute "<< i << " dn = " << delayFlag << std::endl; // Check the change of queue length
+      //       std::cout << "GoodRoute "<< i << " fql = " << ql_fast << ", sql = " << ql_slow << std::endl; // Check the change of queue length
+      //       std::cout << "GoodRoute "<< i << " edq_fast = " << edq_fast << ", edq_slow = " << edq_slow << std::endl; // Check the change of estimated delay
+      //       std::cout << "GoodRoute "<< i << " bound_fast = " << bound_fast << ", bound_slow = " << bound_slow << std::endl; // Check the change of estimated delay
+      //       std::cout << "GoodRoute "<< i << " Fast lane weight: " << weight[2*i] << " Slow lane: " << weight[2*i+1] << std::endl; // Check the change of weight
+      //     }
+      // }
       
-      if (tempSum == 0)
-      {
-        NS_LOG_ERROR ("All next-hops are congested!! Drop packet");
-        if (flagTag.GetFlagTag () == true)
-        {
-          std::cout << "DROP PACKETS: TIME OUT" << std::endl;
-        }
-        return 0;
-      }
+      // if (tempSum == 0)
+      // {
+      //   NS_LOG_ERROR ("All next-hops are congested!! Drop packet");
+      //   if (flagTag.GetFlagTag () == true)
+      //   {
+      //     std::cout << "DROP PACKETS: TIME OUT" << std::endl;
+      //   }
+      //   return 0;
+      // }
 
-      // Only the target traffic flow uses the probabilistic forwarding. Other traffic use optimal forwarding
-      uint32_t randInt = m_rand->GetInteger (1, 100);
-      uint32_t selectRouteIndex = 0;
-      uint32_t selectLaneIndex = 0;
-      if (flagTag.GetFlagTag () == true)
-      {
-        NS_LOG_LOGIC ("Select route by probability");
-        for (uint32_t i = 0; i < goodRoutes.size () * (internalNqueue - 1); i ++)
-        {
-          weight[i] = (weight[i]/tempSum) * 100;
-        }      
+      // // Only the target traffic flow uses the probabilistic forwarding. Other traffic use optimal forwarding
+      // uint32_t randInt = m_rand->GetInteger (1, 100);
+      // uint32_t selectRouteIndex = 0;
+      // uint32_t selectLaneIndex = 0;
+      // if (flagTag.GetFlagTag () == true)
+      // {
+      //   NS_LOG_LOGIC ("Select route by probability");
+      //   for (uint32_t i = 0; i < goodRoutes.size () * (internalNqueue - 1); i ++)
+      //   {
+      //     weight[i] = (weight[i]/tempSum) * 100;
+      //   }      
 
-        for (uint32_t i = 0; i < goodRoutes.size () * (internalNqueue - 1) -1; i ++)
-        {
-          weight[i+1] += weight[i];
-        }
+      //   for (uint32_t i = 0; i < goodRoutes.size () * (internalNqueue - 1) -1; i ++)
+      //   {
+      //     weight[i+1] += weight[i];
+      //   }
      
-        // ns3::RngSeedManager::SetSeed(2);
-        for (uint32_t i = 0; i < goodRoutes.size () * (internalNqueue - 1); i ++)
-        {
-          if (weight[i] >= randInt)
-            {
-              selectRouteIndex = i / 2;
-              selectLaneIndex = i % 2;
-              break;
-            }
-        }
-        std::cout << "******************************************" << std::endl;
-        // std::cout << "Random number: " << randInt << std::endl;
-        std::cout << "selectRouteIndex = " << selectRouteIndex << std::endl;
-        std::cout << "selectLaneIndex = " << selectLaneIndex << std::endl;
-      }
-      else
-      // if (flagTag.GetFlagTag () == false)
-      {
-        NS_LOG_LOGIC ("Select optimal route with highest probability");
-        uint32_t flag = 0;
-        for (uint32_t i = 0; i < goodRoutes.size () * (internalNqueue - 1); i ++)
-        {
-          if (weight[i] > weight[flag])
-          {
-            flag = i;
-          }
-        }      
-        selectRouteIndex = flag / 2;
-        selectLaneIndex = flag % 2;
-      }
+      //   // ns3::RngSeedManager::SetSeed(2);
+      //   for (uint32_t i = 0; i < goodRoutes.size () * (internalNqueue - 1); i ++)
+      //   {
+      //     if (weight[i] >= randInt)
+      //       {
+      //         selectRouteIndex = i / 2;
+      //         selectLaneIndex = i % 2;
+      //         break;
+      //       }
+      //   }
+      //   std::cout << "******************************************" << std::endl;
+      //   // std::cout << "Random number: " << randInt << std::endl;
+      //   std::cout << "selectRouteIndex = " << selectRouteIndex << std::endl;
+      //   std::cout << "selectLaneIndex = " << selectLaneIndex << std::endl;
+      // }
+      // else
+      // // if (flagTag.GetFlagTag () == false)
+      // {
+      //   NS_LOG_LOGIC ("Select optimal route with highest probability");
+      //   uint32_t flag = 0;
+      //   for (uint32_t i = 0; i < goodRoutes.size () * (internalNqueue - 1); i ++)
+      //   {
+      //     if (weight[i] > weight[flag])
+      //     {
+      //       flag = i;
+      //     }
+      //   }      
+      //   selectRouteIndex = flag / 2;
+      //   selectLaneIndex = flag % 2;
+      // }
 
       
-      Ipv4DSRRoutingTableEntry* route;
-      route = goodRoutes.at (selectRouteIndex);
-      PriorityTag priorityTag;
-      p->RemovePacketTag (priorityTag);
-      priorityTag.SetPriority (selectLaneIndex);
-      p->AddPacketTag (priorityTag);
+      // Ipv4DSRRoutingTableEntry* route;
+      // route = goodRoutes.at (selectRouteIndex);
+      // PriorityTag priorityTag;
+      // p->RemovePacketTag (priorityTag);
+      // priorityTag.SetPriority (selectLaneIndex);
+      // p->AddPacketTag (priorityTag);
       
       // create a Ipv4Route object from the selected routing table entry
       rtentry = Create<Ipv4Route> ();

@@ -49,7 +49,8 @@ DsrUdpApplication::DsrUdpApplication ()
     m_running (false),
     m_packetSent (0),
     m_budget (MAX_UINT_32),
-    m_flag (false)
+    m_flag (false),
+    m_vbr (false)
 {
 }
 
@@ -110,7 +111,6 @@ DsrUdpApplication::StopApplication ()
 void
 DsrUdpApplication::SendPacket()
 {
-
     TimestampTag txTimeTag;
     FlagTag flagTag;
     BudgetTag budgetTag;
@@ -147,9 +147,18 @@ DsrUdpApplication::ScheduleTx ()
 {
     if (m_running)
     {
-
-        Time tNext (Seconds (m_packetSize * 8 / static_cast <double> (m_dataRate.GetBitRate())));
-        m_sendEvent = Simulator::Schedule (tNext, &DsrUdpApplication::SendPacket, this);
+        if (m_vbr)
+        {
+            Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable> ();
+            double rate = static_cast<double> (rand->GetInteger (1, 100)) / 100;
+            Time tNext (Seconds (rate * m_packetSize * 8 / static_cast <double> (m_dataRate.GetBitRate())));
+            m_sendEvent = Simulator::Schedule (tNext, &DsrUdpApplication::SendPacket, this);
+        }
+        else
+        {
+            Time tNext (Seconds (m_packetSize * 8 / static_cast <double> (m_dataRate.GetBitRate())));
+            m_sendEvent = Simulator::Schedule (tNext, &DsrUdpApplication::SendPacket, this);
+        }
     }
 }
 

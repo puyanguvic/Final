@@ -6,71 +6,71 @@
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/stats-module.h"
-#include "budget-tag.h"
+#include "dist-tag.h"
 
 namespace ns3 {
 
 //----------------------------------------------------------------------
-//-- BudgetTag
+//-- DistTag
 //------------------------------------------------------
 TypeId
-BudgetTag::GetTypeId (void)
+DistTag::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("BudgetTag")
+  static TypeId tid = TypeId ("DistTag")
     .SetParent<Tag> ()
-    .AddConstructor<BudgetTag> ()
-    .AddAttribute ("Budget",
+    .AddConstructor<DistTag> ()
+    .AddAttribute ("Distance",
                    "The budget time in millisecond",
                    EmptyAttributeValue (),
-                   MakeUintegerAccessor (&BudgetTag::GetBudget),
+                   MakeUintegerAccessor (&DistTag::GetDistance),
                    MakeUintegerChecker <uint32_t> ())
   ;
   return tid;
 }
 
 TypeId
-BudgetTag::GetInstanceTypeId (void) const
+DistTag::GetInstanceTypeId (void) const
 {
   return GetTypeId ();
 }
 
 uint32_t
-BudgetTag::GetSerializedSize (void) const
+DistTag::GetSerializedSize (void) const
 {
   return 4;     // 4 bytes
 }
 
 void
-BudgetTag::Serialize (TagBuffer i) const
+DistTag::Serialize (TagBuffer i) const
 {
-  uint32_t t = m_budget;
+  uint32_t t = m_distance;
   i.Write ((const uint8_t *)&t, 4);
 }
 
 void
-BudgetTag::Deserialize (TagBuffer i)
+DistTag::Deserialize (TagBuffer i)
 {
   uint32_t t;
   i.Read ((uint8_t *)&t, 4);
-  m_budget = t;
+  m_distance = t;
 }
 
 void
-BudgetTag::SetBudget (uint32_t budget)
+DistTag::SetDistance (uint32_t distance)
 {
-  m_budget = budget;
+  m_distance = distance;
 }
 
 uint32_t
-BudgetTag::GetBudget (void) const
+DistTag::GetDistance (void) const
 {
-  return m_budget;
+  return m_distance;
 }
 
 void
-BudgetTag::Print (std::ostream &os) const
+DistTag::Print (std::ostream &os) const
 {
-  os << "budget = " << m_budget;
+  os << "Distance = " << m_distance;
 }
 
 }
