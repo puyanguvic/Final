@@ -329,23 +329,49 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
                 route = d_ipv4->GetRoutingProtocol ()->RouteOutput (p, header, oif, errno_);
                 uint32_t interfaceIdx = route->GetInterface ();
                 Ptr<NetDevice> o_dev = d_ipv4->GetNetDevice (interfaceIdx));
+                Ptr<QueueDisc> o_disc = o_dev->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (o_dev);
+                uint32_t o_queueSize = o_disc->GetInternalQueue (0)->GetCurrentSize ().GetValue ();
+                if (o_queueSize > 8)
+                {
+                    continue;
+                }
+                else
+                {
+                  cRouts.push_back (allRoutes.at (i));
+                }
               }
-              Ptr<Ipv4Route> route = d_ipv4->GetRoutingProtocol ()->RouteOutput (p, header, oif, errno_);
             }
-
           }
-          
-          cRouts.push_back (allRoutes.at (i));
         }
       }
 
       if (cRouts.size () > 0)
       {
+        uint32_t routRef = 0;
+        uint32_t shortestDist = cRouts.at(0)->GetDistance ();
+        for (uint32_t i = 0; i < cRouts.size (); i ++)
+        {
+          if (cRouts.at (i)->GetDistance () <  shortestDist)
+          {
+            routRef = i;
+          }
+        }
+        Ipv4DSRRoutingTableEntry* route = cRouts.at (routRef);
 
+        // create a Ipv4Route object from the selected routing table entry
+        rtentry = Create<Ipv4Route> ();
+        rtentry->SetDestination (route->GetDest ());
+
+        rtentry->SetSource (m_ipv4->GetAddress (route->GetInterface (), 0).GetLocal ());
+        rtentry->SetGateway (route->GetGateway ());
+        uint32_t interfaceIdx = route->GetInterface ();
+        rtentry->SetOutputDevice (m_ipv4->GetNetDevice (interfaceIdx));
+        return rtentry;
       }
       else
       {
         NS_LOG_INFO ("No Route available");
+        return 0;
       }
 
       // // calculate the queuing delay
@@ -581,16 +607,16 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
       // priorityTag.SetPriority (selectLaneIndex);
       // p->AddPacketTag (priorityTag);
       
-      // create a Ipv4Route object from the selected routing table entry
-      rtentry = Create<Ipv4Route> ();
-      rtentry->SetDestination (route->GetDest ());
-      /// \todo handle multi-address case
-      rtentry->SetSource (m_ipv4->GetAddress (route->GetInterface (), 0).GetLocal ());
-      rtentry->SetGateway (route->GetGateway ());
-      uint32_t interfaceIdx = route->GetInterface ();
-      rtentry->SetOutputDevice (m_ipv4->GetNetDevice (interfaceIdx));
+      // // create a Ipv4Route object from the selected routing table entry
+      // rtentry = Create<Ipv4Route> ();
+      // rtentry->SetDestination (route->GetDest ());
+      // /// \todo handle multi-address case
+      // rtentry->SetSource (m_ipv4->GetAddress (route->GetInterface (), 0).GetLocal ());
+      // rtentry->SetGateway (route->GetGateway ());
+      // uint32_t interfaceIdx = route->GetInterface ();
+      // rtentry->SetOutputDevice (m_ipv4->GetNetDevice (interfaceIdx));
 
-      return rtentry;
+      // return rtentry;
     }
   else 
     {
