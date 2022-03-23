@@ -181,9 +181,9 @@ void DsrPacketSink::HandleRead (Ptr<Socket> socket)
         { //EOF
           break;
         }
-      std::cout << "packet received size" << packet->GetSize () << std::endl;
-      packet->Print (std::cout);
-      std::cout << std::endl;
+      // std::cout << "packet received size" << packet->GetSize () << std::endl;
+      // packet->Print (std::cout);
+      // std::cout << std::endl;
       // packet->PrintPacketTags (std::cout);
       // std::cout << std::endl;
       std::ostream* os = m_delayStream->GetStream ();

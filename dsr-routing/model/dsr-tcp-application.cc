@@ -264,9 +264,9 @@ void DsrTcpApplication::SendData (const Address &from, const Address &to)
           packet->AddPacketTag (priorityTag);
         }
       int actual = m_socket->Send (packet);
-      std::cout << "packet send: " << actual << std::endl;
-      packet->PrintPacketTags (std::cout);
-      std::cout << std::endl;
+      // std::cout << "packet send: " << actual << std::endl;
+      // packet->PrintPacketTags (std::cout);
+      // std::cout << std::endl;
       if ((unsigned) actual == toSend)
         {
           m_totBytes += actual;

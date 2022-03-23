@@ -255,6 +255,14 @@ public:
   int64_t AssignStreams (int64_t stream);
 
   // static bool CompareRouteCost(Ipv4DSRRoutingTableEntry* route1, Ipv4DSRRoutingTableEntry* route2);
+    /**
+   * \brief Lookup in the forwarding table for destination.
+   * \param dest destination address
+   * \param oif output interface if any (put 0 otherwise)
+   * \return Ipv4Route to route the packet to reach dest address
+   */
+  Ptr<Ipv4Route> LookupDSRRoute (Ipv4Address dest, Ptr<NetDevice> oif = 0);
+  Ptr<Ipv4Route> LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> oif = 0);
 
 protected:
   void DoDispose (void);
@@ -287,15 +295,6 @@ private:
   typedef std::list<Ipv4DSRRoutingTableEntry *>::const_iterator ASExternalRoutesCI;
   /// iterator of container of Ipv4RoutingTableEntry (routes to external AS)
   typedef std::list<Ipv4DSRRoutingTableEntry *>::iterator ASExternalRoutesI;
-
-  /**
-   * \brief Lookup in the forwarding table for destination.
-   * \param dest destination address
-   * \param oif output interface if any (put 0 otherwise)
-   * \return Ipv4Route to route the packet to reach dest address
-   */
-  Ptr<Ipv4Route> LookupDSRRoute (Ipv4Address dest, Ptr<NetDevice> oif = 0);
-  Ptr<Ipv4Route> LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> oif = 0);
 
   HostRoutes m_hostRoutes;             //!< Routes to hosts
   NetworkRoutes m_networkRoutes;       //!< Routes to networks
