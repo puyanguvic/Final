@@ -289,6 +289,7 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
       // std::cout << "print budget : " << budget << std::endl;
       DistTag distTag;
       RouteVec_t cRouts;
+      // p->PrintPacketTags (std::cout);
       if (p->PeekPacketTag (distTag))
       {
         uint32_t dist = distTag.GetDistance ();
@@ -346,6 +347,10 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
                           cRouts.push_back (allRoutes.at (i));
                         }
                       }
+                      else
+                      {
+                        NS_LOG ("Could not find the DSRVirtualQueue, drop this route.");
+                      }
                     }
                   }
                   
@@ -367,7 +372,10 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
           }
         }
         Ipv4DSRRoutingTableEntry* route = cRouts.at (routRef);
-
+        DistTag distTag;
+        p->PeekPacketTag (distTag);
+        distTag.SetDistance (route->GetDistance ());
+        p->ReplacePacketTag (distTag);
         // create a Ipv4Route object from the selected routing table entry
         rtentry = Create<Ipv4Route> ();
         rtentry->SetDestination (route->GetDest ());
@@ -629,11 +637,6 @@ Ipv4DSRRouting::RouteOutput (Ptr<Packet> p, const Ipv4Header &header, Ptr<NetDev
   BudgetTag bugetTag;
   if (p != nullptr && p->GetSize () != 0 && p->PeekPacketTag (bugetTag))
     { 
-      // std::cout << "packet size: " << p->GetSerializedSize () << std::endl; 
-      // TimestampTag txTimeTag;
-      // bool getTx = p->PeekPacketTag (txTimeTag);
-      // std::cout << getTx << " txtime : " << txTimeTag.GetTimestamp ().GetNanoSeconds () << std::endl;
-      // rtentry = LookupDSRRoute (header.GetDestination (), p, oif);
       rtentry = LookupDSRRoute (header.GetDestination (), p, oif);
     }
   else
@@ -658,10 +661,6 @@ Ipv4DSRRouting::RouteInput  (Ptr<const Packet> p, const Ipv4Header &header, Ptr<
                                 UnicastForwardCallback ucb, MulticastForwardCallback mcb,
                                 LocalDeliverCallback lcb, ErrorCallback ecb)
 { 
-  /**
-   * \author Pu Yang
-   * \brief make a copy of p, and process p_copy
-  */
   Ptr <Packet> p_copy = p->Copy();
   NS_LOG_FUNCTION (this << p << header << header.GetSource () << header.GetDestination () << idev << &lcb << &ecb);
   // Check if input device supports IP
