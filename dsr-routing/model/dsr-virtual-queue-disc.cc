@@ -52,6 +52,7 @@ DsrVirtualQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
 {
   NS_LOG_FUNCTION (this << item);
   uint32_t lane = EnqueueClassify (item);
+  // std::cout << "get current size : " << lane << std::endl;
   if (GetInternalQueue(lane)->GetCurrentSize ().GetValue() >= LinesSize[lane])
   {
     DropBeforeEnqueue (item, LIMIT_EXCEEDED_DROP);
@@ -129,6 +130,9 @@ DsrVirtualQueueDisc::CheckConfig (void)
       AddInternalQueue (factory.Create<InternalQueue> ());
       AddInternalQueue (factory.Create<InternalQueue> ());
       AddInternalQueue (factory.Create<InternalQueue> ());
+      GetInternalQueue (0)->SetMaxSize (QueueSize ("12p"));
+      GetInternalQueue (1)->SetMaxSize (QueueSize ("36p"));
+      GetInternalQueue (2)->SetMaxSize (QueueSize ("100p"));
     }
 
   if (GetNInternalQueues () != 3)
@@ -145,15 +149,15 @@ DsrVirtualQueueDisc::CheckConfig (void)
       return false;
     }
 
-  for (uint8_t i = 0; i < 2; i++)
-    {
-      if (GetInternalQueue (i)->GetMaxSize () < GetMaxSize ())
-        {
-          NS_LOG_ERROR ("The capacity of some internal queue(s) is less than the queue disc capacity");
-          return false;
-        }
-    }
-  // std::cout << "The number of Internal Queues = "<< GetNInternalQueues () << std::endl;
+  // for (uint8_t i = 0; i < 2; i++)
+  //   {
+  //     if (GetInternalQueue (i)->GetMaxSize () < GetMaxSize ())
+  //       {
+  //         NS_LOG_ERROR ("The capacity of some internal queue(s) is less than the queue disc capacity");
+  //         return false;
+  //       }
+  //   }
+
   return true;
 }
 
@@ -249,7 +253,7 @@ uint32_t
 DsrVirtualQueueDisc::EnqueueClassify (Ptr<QueueDiscItem> item)
 {
   PriorityTag priorityTag;
-  if (item->GetPacket ()->FindFirstMatchingByteTag (priorityTag))
+  if (item->GetPacket ()->PeekPacketTag (priorityTag))
     {
       uint32_t priority = priorityTag.GetPriority ();
       switch (priority)

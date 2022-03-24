@@ -293,7 +293,7 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
       if (p->PeekPacketTag (distTag))
       {
         uint32_t dist = distTag.GetDistance ();
-        std::cout << dist << std::endl;
+        // std::cout << dist << std::endl;
         budget = (budget < dist)? budget : dist;
       }
 
@@ -306,6 +306,14 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
           Ptr <NetDevice> dev = m_ipv4->GetNetDevice (allRoutes.at (i)->GetInterface ());
           //get the queue disc on the device
           Ptr<QueueDisc> disc = m_ipv4->GetNetDevice (0)->GetNode ()->GetObject<TrafficControlLayer> ()->GetRootQueueDiscOnDevice (dev);
+          Ptr<DsrVirtualQueueDisc> i_dvq = DynamicCast <DsrVirtualQueueDisc> (disc);
+          uint32_t i_fastSize = i_dvq->GetInternalQueue (0) ->GetCurrentSize ().GetValue ();
+          uint32_t i_slowSize = i_dvq->GetInternalQueue (1) ->GetCurrentSize ().GetValue ();
+          if (i_fastSize >= (i_dvq->GetInternalQueue (0)->GetMaxSize ().GetValue ()-1) 
+              || (i_slowSize >= i_dvq->GetInternalQueue (1)->GetMaxSize ().GetValue ()-1))
+            {
+              continue;
+            }
           
           Ptr<Channel> channel = dev->GetChannel ();
           PointToPointChannel *p2pchannel = dynamic_cast <PointToPointChannel *> (PeekPointer (channel));
@@ -342,14 +350,21 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
                       {
                         uint32_t o_fastSize = o_dvq->GetInternalQueue (0) ->GetCurrentSize ().GetValue ();
                         uint32_t o_slowSize = o_dvq->GetInternalQueue (1) ->GetCurrentSize ().GetValue ();
-                        if (o_fastSize < o_dvq->GetInternalQueue (0)->GetMaxSize ().GetValue () && o_slowSize < o_dvq->GetInternalQueue (1)->GetMaxSize ().GetValue ())
+                        // std::cout << "current size : " << o_dvq->GetInternalQueue (0)->GetMaxSize ().GetValue () << std::endl;
+                        // uint32_t o_normalSize = o_dvq->GetInternalQueue (2) ->GetCurrentSize ().GetValue ();
+                        cRouts.push_back (allRoutes.at (i));
+                        if (o_fastSize < (o_dvq->GetInternalQueue (0)->GetMaxSize ().GetValue ()-1) || o_slowSize < (o_dvq->GetInternalQueue (1)->GetMaxSize ().GetValue ()-1))
                         {
                           cRouts.push_back (allRoutes.at (i));
+                        }
+                        else
+                        {
+                          std::cout << "route overloaded" << std::endl;
                         }
                       }
                       else
                       {
-                        NS_LOG ("Could not find the DSRVirtualQueue, drop this route.");
+                        NS_LOG_INFO ("Could not find the DSRVirtualQueue, drop this route.");
                       }
                     }
                   }
@@ -376,10 +391,22 @@ Ipv4DSRRouting::LookupDSRRoute (Ipv4Address dest, Ptr<Packet> p, Ptr<NetDevice> 
         p->PeekPacketTag (distTag);
         distTag.SetDistance (route->GetDistance ());
         p->ReplacePacketTag (distTag);
+
+        PriorityTag priorityTag;
+        p->PeekPacketTag (priorityTag);
+        uint32_t bgt = budgetTag.GetBudget () + timestampTag.GetMicroSeconds () - Simulator::Now().GetMicroSeconds ();
+        if (bgt > (route->GetDistance () + 10))
+          {
+            priorityTag.SetPriority (1);
+          }
+        else
+          {
+            priorityTag.SetPriority (0);
+          }
+        p->ReplacePacketTag (priorityTag);
         // create a Ipv4Route object from the selected routing table entry
         rtentry = Create<Ipv4Route> ();
         rtentry->SetDestination (route->GetDest ());
-
         rtentry->SetSource (m_ipv4->GetAddress (route->GetInterface (), 0).GetLocal ());
         rtentry->SetGateway (route->GetGateway ());
         uint32_t interfaceIdx = route->GetInterface ();
@@ -590,9 +617,6 @@ Ipv4DSRRouting::PrintRoutingTable (Ptr<OutputStreamWrapper> stream, Time::Unit u
           *os << std::setiosflags (std::ios::left) << std::setw (6) << flags.str ();
           // // Metric not implemented
           // *os << "-" << "      ";
-          /**
-           * \author Pu Yang
-          */
           metric << route.GetDistance ();
           *os << std::setiosflags (std::ios::left) <<std::setw(16) << metric.str();
           
