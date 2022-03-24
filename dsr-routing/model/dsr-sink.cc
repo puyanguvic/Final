@@ -99,10 +99,10 @@ Time DsrPacketSink::GetDelay(const Ptr<Packet> &p) const
 {
   NS_LOG_FUNCTION (this);
   TimestampTag txTimeTag;
-  p->FindFirstMatchingByteTag (txTimeTag);
+  p->PeekPacketTag (txTimeTag);
   Time txTime = txTimeTag.GetTimestamp ();
-  Time deadline = Simulator::Now() - txTime;
-  return deadline;
+  Time delay = Simulator::Now() - txTime;
+  return delay;
 }
 
 void DsrPacketSink::DoDispose (void)
@@ -183,7 +183,7 @@ void DsrPacketSink::HandleRead (Ptr<Socket> socket)
         }
         // get packet
       std::ostream* os = m_delayStream->GetStream ();
-      *os << Simulator::Now ().GetMicroSeconds () << std::endl;
+      *os << GetDelay (packet).GetMicroSeconds ()/1000.0 << std::endl;
       // get delay
       m_totalRx += packet->GetSize ();
       if (InetSocketAddress::IsMatchingType (from))
