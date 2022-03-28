@@ -863,7 +863,6 @@ DSRRouteManagerImpl::InitializeRoutes ()
                           Ipv4Address addr = ifc.GetLocal ();
                           if (addr == linkRemote->GetLinkData ())
                             {
-                              std::cout << "true" << std::endl;
                               for (uint32_t nIfc = 1; nIfc < nextIpv4->GetNInterfaces (); nIfc ++)
                                 {
                                   gr->AddHostRouteTo (nextIpv4->GetAddress (nIfc,0).GetLocal (), linkRemote->GetLinkData (), Iface, l->GetMetric ());

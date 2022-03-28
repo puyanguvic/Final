@@ -52,7 +52,7 @@ DsrVirtualQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
 {
   NS_LOG_FUNCTION (this << item);
   uint32_t lane = EnqueueClassify (item);
-  std::cout << "get current size : " << GetInternalQueue(lane)->GetCurrentSize ().GetValue() << std::endl;
+  // std::cout << "get current size : " << GetInternalQueue(lane)->GetCurrentSize ().GetValue() << std::endl;
   if (GetInternalQueue(lane)->GetCurrentSize ().GetValue() >= LinesSize[lane])
   {
     DropBeforeEnqueue (item, LIMIT_EXCEEDED_DROP);

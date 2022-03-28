@@ -659,7 +659,7 @@ Ipv4DSRRouting::RouteOutput (Ptr<Packet> p, const Ipv4Header &header, Ptr<NetDev
   NS_LOG_LOGIC ("Unicast destination- looking up");
   Ptr<Ipv4Route> rtentry;
   BudgetTag bugetTag;
-  if (p != nullptr && p->GetSize () != 0 && p->PeekPacketTag (bugetTag))
+  if (p != nullptr && p->GetSize () != 0 && p->PeekPacketTag (bugetTag) && bugetTag.GetBudget () != 0)
     { 
       rtentry = LookupDSRRoute (header.GetDestination (), p, oif);
     }
@@ -724,7 +724,7 @@ Ipv4DSRRouting::RouteInput  (Ptr<const Packet> p, const Ipv4Header &header, Ptr<
   Ptr<Ipv4Route> rtentry; 
   BudgetTag budgetTag;
   
-  if (p->PeekPacketTag (budgetTag))
+  if (p->PeekPacketTag (budgetTag) && budgetTag.GetBudget () != 0)
   {
     rtentry = LookupDSRRoute (header.GetDestination (), p_copy); 
   }
