@@ -182,10 +182,14 @@ void DsrPacketSink::HandleRead (Ptr<Socket> socket)
           break;
         }
         // get packet
-      TimestampTag timeTag;
-      packet->PeekPacketTag (timeTag);
-      std::ostream* os = m_delayStream->GetStream ();
-      *os <<timeTag.GetSeconds () << " " << GetDelay (packet).GetMicroSeconds ()/1000.0 << std::endl;
+      FlagTag flagTag;
+      if (packet->PeekPacketTag (flagTag) && flagTag.GetFlagTag () == true)
+      {
+        TimestampTag timeTag;
+        packet->PeekPacketTag (timeTag);
+        std::ostream* os = m_delayStream->GetStream ();
+        *os <<timeTag.GetSeconds () << " " << GetDelay (packet).GetMicroSeconds ()/1000.0 << std::endl;
+      }
       // get delay
       m_totalRx += packet->GetSize ();
       if (InetSocketAddress::IsMatchingType (from))

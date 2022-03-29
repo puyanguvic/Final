@@ -132,7 +132,7 @@ DsrVirtualQueueDisc::CheckConfig (void)
       AddInternalQueue (factory.Create<InternalQueue> ());
       GetInternalQueue (0)->SetMaxSize (QueueSize ("12p"));
       GetInternalQueue (1)->SetMaxSize (QueueSize ("36p"));
-      GetInternalQueue (2)->SetMaxSize (QueueSize ("100p"));
+      GetInternalQueue (2)->SetMaxSize (QueueSize ("60p"));
     }
 
   if (GetNInternalQueues () != 3)
