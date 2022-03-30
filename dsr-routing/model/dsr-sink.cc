@@ -189,7 +189,7 @@ void DsrPacketSink::HandleRead (Ptr<Socket> socket)
         packet->PeekPacketTag (timeTag);
         std::ostream* os = m_delayStream->GetStream ();
         // timeTag.GetSeconds () << " " 
-        *os << GetDelay (packet).GetMicroSeconds ()/1000.0 << std::endl;
+        *os << timeTag.GetSeconds () << " " << GetDelay (packet).GetMicroSeconds ()/1000.0 << std::endl;
       }
       // get delay
       m_totalRx += packet->GetSize ();
